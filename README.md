@@ -1,0 +1,2 @@
+# coregpt
+learn and practice
