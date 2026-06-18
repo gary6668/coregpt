@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 # define idx, test logits test, loss with the assistance of targets
 
+
 class FakeSelfAttention(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
@@ -12,12 +13,31 @@ class FakeSelfAttention(nn.Module):
         return torch.zeros_like(x)
 
 
-class FakeMLP(nn.Module):
+class MLP(nn.Module):
+    """
+    Feed-forward network inside a Transformer Block.
+
+    Input:  B x T x C
+    Output: B x T x C
+    """
+
     def __init__(self, n_embd):
         super().__init__()
 
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 4 * n_embd),
+            nn.GELU(),
+            nn.Linear(4 * n_embd, n_embd),
+        )
+
     def forward(self, x):
-        return torch.zeros_like(x)
+        return self.net(x)
+# class FakeMLP(nn.Module):
+#     def __init__(self, n_embd):
+#         super().__init__()
+
+#     def forward(self, x):
+#         return torch.zeros_like(x)
 
 
 class Block(nn.Module):
@@ -26,7 +46,7 @@ class Block(nn.Module):
         self.ln1 = nn.LayerNorm(n_embd)
         self.sa = FakeSelfAttention(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
-        self.mlp = FakeMLP(n_embd)
+        self.mlp = MLP(n_embd)
 
     def forward(self, x):
         x = x + self.sa(self.ln1(x))
@@ -136,16 +156,18 @@ if __name__ == "__main__":
         [10, 23, 45, 8],
         [7, 4, 9, 11],
     ])
-    targets = torch.tensor([
-        [10, 23, 45, 8],
-        [7, 4, 9, 11],
-    ])
+    
+    # targets = torch.tensor([
+    #     [10, 23, 45, 8],
+    #     [7, 4, 9, 11],
+    # ])
+
     # targets: B × T
     # Each position tries to predict the next token.
-    # targets = torch.tensor([
-    #     [23, 45, 8, 1],
-    #     [4, 9, 11, 2],
-    # ])
+    targets = torch.tensor([
+        [23, 45, 8, 1],
+        [4, 9, 11, 2],
+    ])
 
     logits, loss = model(idx, targets)
 
