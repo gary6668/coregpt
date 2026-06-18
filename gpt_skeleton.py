@@ -4,20 +4,47 @@ import torch.nn.functional as F
 
 # define idx, test logits test, loss with the assistance of targets
 
-
-class Block(nn.Module):
-    """
-    Temporary placeholder Block.
-
-    For now, it does not implement attention or MLP.
-    It simply returns x unchanged, so we can test the outer GPT pipeline first.
-    """
-
+class FakeSelfAttention(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
 
     def forward(self, x):
+        return torch.zeros_like(x)
+
+
+class FakeMLP(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.zeros_like(x)
+
+
+class Block(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.sa = FakeSelfAttention(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+        self.mlp = FakeMLP(n_embd)
+
+    def forward(self, x):
+        x = x + self.sa(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
         return x
+# class Block(nn.Module):
+#     """
+#     Temporary placeholder Block.
+
+#     For now, it does not implement attention or MLP.
+#     It simply returns x unchanged, so we can test the outer GPT pipeline first.
+#     """
+
+#     def __init__(self, n_embd):
+#         super().__init__()
+
+#     def forward(self, x):
+#         return x
 
 
 class GPT(nn.Module):
