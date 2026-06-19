@@ -16,3 +16,10 @@
     For the first version:
         head_size = n_embd
         so output shape is B × T × C
+
+
+### 0619 after dinner
+
+    now status : idx -> embd -> Block -> qkv,s,ao -> ln,sa -> ln;c,4c,GeLU,4c,c(mlp) -> output
+
+    next ：turn single-head to multi-head causal self-attention 
