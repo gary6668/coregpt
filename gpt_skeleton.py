@@ -4,13 +4,45 @@ import torch.nn.functional as F
 
 # define idx, test logits test, loss with the assistance of targets
 
+class SingleHeadCausalSelfAttention(nn.Module):
+    """
+    Single-head causal self-attention.
 
-class FakeSelfAttention(nn.Module):
-    def __init__(self, n_embd):
+    Input:  B x T x C
+    Output: B x T x C
+    """
+
+    def __init__(self, n_embd, block_size):
         super().__init__()
 
+        self.key = nn.Linear(n_embd, n_embd, bias=False)
+        self.query = nn.Linear(n_embd, n_embd, bias=False)
+        self.value = nn.Linear(n_embd, n_embd, bias=False)
+
+        self.register_buffer(
+            "tril",
+            torch.tril(torch.ones(block_size, block_size))
+        )
+
     def forward(self, x):
-        return torch.zeros_like(x)
+        B, T, C = x.shape
+
+        k = self.key(x)      # B × T × C
+        q = self.query(x)    # B × T × C
+        v = self.value(x)    # B × T × C
+
+        wei = q @ k.transpose(-2, -1) * C ** -0.5  # B × T × T (BTC @ BCT)
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
+        wei = F.softmax(wei, dim=-1)  # B × T × T
+
+        out = wei @ v  # B × T × C
+        return out
+# class FakeSelfAttention(nn.Module):
+#     def __init__(self, n_embd):
+#         super().__init__()
+
+#     def forward(self, x):
+#         return torch.zeros_like(x)
 
 
 class MLP(nn.Module):
@@ -41,10 +73,10 @@ class MLP(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, n_embd):
+    def __init__(self, n_embd, block_size):
         super().__init__()
         self.ln1 = nn.LayerNorm(n_embd)
-        self.sa = FakeSelfAttention(n_embd)
+        self.sa = SingleHeadCausalSelfAttention(n_embd, block_size)
         self.ln2 = nn.LayerNorm(n_embd)
         self.mlp = MLP(n_embd)
 
@@ -84,7 +116,7 @@ class GPT(nn.Module):
         # blocks: n_layer Transformer blocks
         # currently these are fake Blocks: B × T × C -> B × T × C
         self.blocks = nn.Sequential(*[
-            Block(n_embd) for _ in range(n_layer)
+            Block(n_embd, block_size) for _ in range(n_layer)
         ])
 
         # final LayerNorm: B × T × C -> B × T × C
@@ -156,7 +188,7 @@ if __name__ == "__main__":
         [10, 23, 45, 8],
         [7, 4, 9, 11],
     ])
-    
+
     # targets = torch.tensor([
     #     [10, 23, 45, 8],
     #     [7, 4, 9, 11],
