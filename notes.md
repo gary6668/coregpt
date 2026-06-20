@@ -23,3 +23,9 @@
     now status : idx -> embd -> Block -> qkv,s,ao -> ln,sa -> ln;c,4c,GeLU,4c,c(mlp) -> output
 
     next ：turn single-head to multi-head causal self-attention 
+
+### 0620
+
+    status: complete and understood multi-head causal self attention
+
+    next: try to training loop??

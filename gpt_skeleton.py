@@ -9,15 +9,16 @@ class SingleHeadCausalSelfAttention(nn.Module):
     Single-head causal self-attention.
 
     Input:  B x T x C
-    Output: B x T x C
+    Output: B x T x head_size
     """
 
-    def __init__(self, n_embd, block_size):
+    def __init__(self, n_embd, head_size, block_size):
         super().__init__()
 
-        self.key = nn.Linear(n_embd, n_embd, bias=False)
-        self.query = nn.Linear(n_embd, n_embd, bias=False)
-        self.value = nn.Linear(n_embd, n_embd, bias=False)
+        self.head_size = head_size
+        self.key = nn.Linear(n_embd, head_size, bias=False)
+        self.query = nn.Linear(n_embd, head_size, bias=False)
+        self.value = nn.Linear(n_embd, head_size, bias=False)
 
         self.register_buffer(
             "tril",
@@ -31,7 +32,7 @@ class SingleHeadCausalSelfAttention(nn.Module):
         q = self.query(x)    # B × T × C
         v = self.value(x)    # B × T × C
 
-        wei = q @ k.transpose(-2, -1) * C ** -0.5  # B × T × T (BTC @ BCT)
+        wei = q @ k.transpose(-2, -1) * self.head_size ** -0.5  # B × T × T (BTC @ BCT)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
         wei = F.softmax(wei, dim=-1)  # B × T × T
 
@@ -43,7 +44,31 @@ class SingleHeadCausalSelfAttention(nn.Module):
 
 #     def forward(self, x):
 #         return torch.zeros_like(x)
+class MultiHeadCausalSelfAttention(nn.Module):
+    def __init__(self, n_embd, n_head, block_size):
+        super().__init__()
 
+        assert n_embd % n_head == 0
+
+        head_size = n_embd // n_head
+
+        self.heads = nn.ModuleList([
+            SingleHeadCausalSelfAttention(n_embd, head_size, block_size)
+            for _ in range(n_head)
+        ])
+
+        self.proj = nn.Linear(n_embd, n_embd)
+    
+    def forward(self, x):
+        
+        # each head(x): B × T × head_size
+        out = torch.cat([head(x) for head in self.heads], dim=-1)
+        
+        # out after concat: B × T × C
+        out = self.proj(out)
+
+        #out after projection: B × T × C   
+        return out
 
 class MLP(nn.Module):
     """
@@ -73,10 +98,10 @@ class MLP(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, n_embd, block_size):
+    def __init__(self, n_embd, n_head, block_size):
         super().__init__()
         self.ln1 = nn.LayerNorm(n_embd)
-        self.sa = SingleHeadCausalSelfAttention(n_embd, block_size)
+        self.sa = MultiHeadCausalSelfAttention(n_embd, n_head, block_size)
         self.ln2 = nn.LayerNorm(n_embd)
         self.mlp = MLP(n_embd)
 
@@ -100,7 +125,7 @@ class Block(nn.Module):
 
 
 class GPT(nn.Module):
-    def __init__(self, vocab_size, block_size, n_embd, n_layer):
+    def __init__(self, vocab_size, block_size, n_embd, n_head, n_layer):
         super().__init__()
 
         self.block_size = block_size
@@ -114,9 +139,10 @@ class GPT(nn.Module):
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
 
         # blocks: n_layer Transformer blocks
-        # currently these are fake Blocks: B × T × C -> B × T × C
+        # current version : multi-head causal self-attention + MLP
+        # B × T × C -> B × T × C
         self.blocks = nn.Sequential(*[
-            Block(n_embd, block_size) for _ in range(n_layer)
+            Block(n_embd, n_head, block_size) for _ in range(n_layer)
         ])
 
         # final LayerNorm: B × T × C -> B × T × C
@@ -174,12 +200,14 @@ if __name__ == "__main__":
     vocab_size = 100
     block_size = 8
     n_embd = 16
+    n_head = 4
     n_layer = 2
 
     model = GPT(
         vocab_size=vocab_size,
         block_size=block_size,
         n_embd=n_embd,
+        n_head=n_head,
         n_layer=n_layer,
     )
 
