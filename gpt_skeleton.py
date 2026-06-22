@@ -198,8 +198,22 @@ class GPT(nn.Module):
 
 if __name__ == "__main__":
     torch.manual_seed(42)
+
+    text = "hello world. this is a tiny gpt test. hello again."
+
+    chars = sorted(list(set(text)))
+    vocab_size = len(chars)
+
+    print("chars:", chars)
+    print("vocab_size:", vocab_size)
+
+    stoi = {ch: i for i, ch in enumerate(chars)}
+    itos = {i: ch for i, ch in enumerate(chars)}
+
+    encode = lambda s: [stoi[c] for c in s]
+    decode = lambda ids: "".join([itos[i] for i in ids])
     
-    vocab_size = 100
+    # vocab_size = 100
     block_size = 8
     n_embd = 16
     n_head = 4
