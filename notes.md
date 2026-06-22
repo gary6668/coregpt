@@ -28,4 +28,4 @@
 
     status: complete and understood multi-head causal self attention
 
-    next: try to training loop??
+    next: try to training loop?? /// remember to set the random seed(torch.manual_seed(42))
