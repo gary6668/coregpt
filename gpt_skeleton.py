@@ -212,9 +212,22 @@ if __name__ == "__main__":
 
     encode = lambda s: [stoi[c] for c in s]
     decode = lambda ids: "".join([itos[i] for i in ids])
+
+    data = torch.tensor(encode(text), dtype=torch.long)
     
     # vocab_size = 100
     block_size = 8
+    batch_size = 4
+
+
+
+    def get_batch(data, batch_size, block_size):
+        ix = torch.randint(len(data) - block_size, (batch_size,))
+        x = torch.stack([data[i:i+block_size] for i in ix])
+        y = torch.stack([data[i+1:i+block_size+1] for i in ix])
+        return x, y
+
+
     n_embd = 16
     n_head = 4
     n_layer = 2
@@ -227,23 +240,25 @@ if __name__ == "__main__":
         n_layer=n_layer,
     )
 
-    # idx: B × T
-    idx = torch.tensor([
-        [10, 23, 45, 8],
-        [7, 4, 9, 11],
-    ])
+    idx, targets = get_batch(data, batch_size, block_size)
 
-    # targets = torch.tensor([
+    # # idx: B × T
+    # idx = torch.tensor([
     #     [10, 23, 45, 8],
     #     [7, 4, 9, 11],
     # ])
 
-    # targets: B × T
-    # Each position tries to predict the next token.
-    targets = torch.tensor([
-        [23, 45, 8, 1],
-        [4, 9, 11, 2],
-    ])
+    # # targets = torch.tensor([
+    # #     [10, 23, 45, 8],
+    # #     [7, 4, 9, 11],
+    # # ])
+
+    # # targets: B × T
+    # # Each position tries to predict the next token.
+    # targets = torch.tensor([
+    #     [23, 45, 8, 1],
+    #     [4, 9, 11, 2],
+    # ])
 
     print("idx shape:", idx.shape)
 
@@ -263,6 +278,9 @@ if __name__ == "__main__":
         if step % 10 == 0:
 
             print(f"step {step}: loss = {loss.item():.4f}")
+
+
+
 
 
     # logits, loss = model(idx, targets)
