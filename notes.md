@@ -41,3 +41,7 @@
     status: add generation module, set up seed, generation context.
 
     next: scaling and engineering 
+
+### 0623_3
+
+    use temperate, top_k

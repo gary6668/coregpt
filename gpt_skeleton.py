@@ -195,14 +195,27 @@ class GPT(nn.Module):
 
         return logits, loss
     
-    def generate(self, idx, max_new_tokens):
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         for _ in range(max_new_tokens):
+
             idx_cond = idx[:, -block_size:]
             logits, _ = self(idx_cond)  #logits: (B, T, V)
             logits = logits[:, -1, :]  #(B, T, V) -> (B, V)
+
+            logits = logits / temperature
+
             probs = F.softmax(logits, dim=-1)  #probs: (B, V)
+
+            if top_k is not None:
+                v, ix = torch.topk(probs, top_k)
+                probs_ = torch.zeros_like(probs)
+                probs_.scatter_(-1, ix, v)
+                probs = probs_ / probs_.sum(dim=-1, keepdim=True)
+
             idx_next = torch.multinomial(probs, num_samples=1)  #idx_next: (B, 1)
-            idx = torch.cat([idx, idx_next], dim=1)# idx: (B, T)
+
+            idx = torch.cat([idx, idx_next], dim=1) #idx: (B, T)
+
         return idx
 
 
@@ -292,7 +305,12 @@ if __name__ == "__main__":
             print(f"step {step}: loss = {loss.item():.4f}")
 
     context = torch.zeros((1, 1), dtype=torch.long)
-    out = model.generate(context, max_new_tokens=100)
+    out = model.generate(
+        context,
+        max_new_tokens=100,
+        temperature=0.8,
+        top_k=5
+    )
 
     print(decode(out[0].tolist()))
 
