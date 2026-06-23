@@ -194,6 +194,17 @@ class GPT(nn.Module):
             loss = F.cross_entropy(logits_flat, targets_flat)
 
         return logits, loss
+    
+    def generate(self, idx, max_new_tokens):
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -block_size:]
+            logits, _ = self(idx_cond)  #logits: (B, T, V)
+            logits = logits[:, -1, :]  #(B, T, V) -> (B, V)
+            probs = F.softmax(logits, dim=-1)  #probs: (B, V)
+            idx_next = torch.multinomial(probs, num_samples=1)  #idx_next: (B, 1)
+            idx = torch.cat([idx, idx_next], dim=1)# idx: (B, T)
+        return idx
+
 
 
 if __name__ == "__main__":
@@ -204,8 +215,8 @@ if __name__ == "__main__":
     chars = sorted(list(set(text)))
     vocab_size = len(chars)
 
-    print("chars:", chars)
-    print("vocab_size:", vocab_size)
+    # print("chars:", chars)
+    # print("vocab_size:", vocab_size)
 
     stoi = {ch: i for i, ch in enumerate(chars)}
     itos = {i: ch for i, ch in enumerate(chars)}
@@ -240,7 +251,7 @@ if __name__ == "__main__":
         n_layer=n_layer,
     )
 
-    idx, targets = get_batch(data, batch_size, block_size)
+    # idx, targets = get_batch(data, batch_size, block_size)
 
     # # idx: B × T
     # idx = torch.tensor([
@@ -260,15 +271,16 @@ if __name__ == "__main__":
     #     [4, 9, 11, 2],
     # ])
 
-    print("idx shape:", idx.shape)
+    # print("idx shape:", idx.shape)
 
-    logits, loss = model(idx, targets)
-    print("logits shape:", logits.shape)
-    print("initial loss:", loss.item())
+    # logits, loss = model(idx, targets)
+    # print("logits shape:", logits.shape)
+    # print("initial loss:", loss.item())
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
     for step in range(101):
+        idx, targets = get_batch(data, batch_size, block_size)
         logits, loss = model(idx, targets)
 
         optimizer.zero_grad()
@@ -278,6 +290,11 @@ if __name__ == "__main__":
         if step % 10 == 0:
 
             print(f"step {step}: loss = {loss.item():.4f}")
+
+    context = torch.zeros((1, 1), dtype=torch.long)
+    out = model.generate(context, max_new_tokens=100)
+
+    print(decode(out[0].tolist()))
 
 
 

@@ -29,3 +29,15 @@
     status: complete and understood multi-head causal self attention
 
     next: try to training loop?? /// remember to set the random seed(torch.manual_seed(42))
+
+### 0623 
+
+    status : add token incoming path, randomize token fetch
+
+    next : make generation module
+
+### 0623_2 
+
+    status: add generation module, set up seed, generation context.
+
+    next: scaling and engineering 
